@@ -1,12 +1,9 @@
 import pandas as pd
+import glob
 
 
 df = pd.read_csv("synthetic_it_support_tickets.csv")
-# Now manipulate data to access a batch of tickets (simulating daily tickets would be API call)
 
-# Now we want access to each column pulling times from tickets
-
-# Prioritize the priority section, use unique customer ID's for specific companies
 
 # Ensure the timestamp column is in datetime format
 df['created_at'] = pd.to_datetime(df['created_at'])
@@ -15,7 +12,7 @@ df['created_at'] = pd.to_datetime(df['created_at'])
 # Now to cycle for each month of each year
 start_year = 2022
 start_month = 1
-end_year = 2026
+end_year = 2025
 end_month = 12
 
 
@@ -31,4 +28,27 @@ while (start_year < end_year) or (start_year == end_year and start_month <= end_
         start_month = 1
 
 
+# Validate data from each month
+# Require all required columns, not empty, no duplicate ticket IDs
 
+file_list = glob.glob("raw/batch_*.csv")
+
+for file in file_list:
+    try:
+        df = pd.read_csv(file)
+
+        # Check if file is empty
+        if df.empty:
+            print(f'{file} has headers, but no rows')
+            continue
+
+        # Check for unique ticket IDs
+        if df['ticket_id'].duplicated().any():
+            duplicate_count = df['ticket_id'].duplicated().sum()
+            print(f'{file} has {duplicate_count} duplicate ticket IDs')
+            continue
+
+        print(f'{file} passed verification')
+
+    except pd.errors.EmptyDataError:
+        print("File is empty")
