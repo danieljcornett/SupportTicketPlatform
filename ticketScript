@@ -1,13 +1,20 @@
 import pandas as pd
 
 
-data = pd.read_csv("synthetic_it_support_tickets.csv")
+df = pd.read_csv("synthetic_it_support_tickets.csv")
 # Now manipulate data to access a batch of tickets (simulating daily tickets would be API call)
 
 # Now we want access to each column pulling times from tickets
 
 # Prioritize the priority section, use unique customer ID's for specific companies
 
-print(data.head())
+# Ensure the timestamp column is in datetime format
+df['created_at'] = pd.to_datetime(df['created_at'])
+
+# Want to create batches for individual months - going to use monthly tickets
+jan_2021_df = df[(df['created_at'].dt.month == 1) & (df['created_at'].dt.year == 2022)]
+
+print(jan_2021_df)
+
 
 
