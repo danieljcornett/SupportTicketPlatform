@@ -10,3 +10,10 @@ My Planned architecure goes as:
 6. Next.js + Prisma dashboard where agents see tickets, AI suggestions, and can override/approve
 7. Power BI or Tableau exec dashboard on top of the warehouse marts
 8. Plan to CI/CD & Deploy via Vercel and Docker
+
+
+
+
+Building Steps 
+1. Locally pulled dataset, in real world scenario would access cloud storage, use airflow to connect.
+2. Sorted by months to simulate pulling daily tickets

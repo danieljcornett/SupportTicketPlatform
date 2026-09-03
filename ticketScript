@@ -11,10 +11,24 @@ df = pd.read_csv("synthetic_it_support_tickets.csv")
 # Ensure the timestamp column is in datetime format
 df['created_at'] = pd.to_datetime(df['created_at'])
 
-# Want to create batches for individual months - going to use monthly tickets
-jan_2021_df = df[(df['created_at'].dt.month == 1) & (df['created_at'].dt.year == 2022)]
 
-print(jan_2021_df)
+# Now to cycle for each month of each year
+start_year = 2022
+start_month = 1
+end_year = 2026
+end_month = 12
+
+
+while (start_year < end_year) or (start_year == end_year and start_month <= end_month):
+    monthly_df = df[(df['created_at'].dt.month == start_month) & (df['created_at'].dt.year == start_year)]
+
+    monthly_df.to_csv(f'raw/batch_{start_year}-{start_month}-01.csv', index=False)
+    start_month += 1
+
+    # End of the year change year, reset months to one
+    if start_month > 12:
+        start_year += 1
+        start_month = 1
 
 
 
