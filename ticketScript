@@ -1,9 +1,9 @@
 import pandas as pd
 import glob
+import os
 
 
 df = pd.read_csv("synthetic_it_support_tickets.csv")
-
 
 # Ensure the timestamp column is in datetime format
 df['created_at'] = pd.to_datetime(df['created_at'])
@@ -15,11 +15,11 @@ start_month = 1
 end_year = 2025
 end_month = 12
 
-
+# Creating each "batch" of incoming tickets 
 while (start_year < end_year) or (start_year == end_year and start_month <= end_month):
     monthly_df = df[(df['created_at'].dt.month == start_month) & (df['created_at'].dt.year == start_year)]
 
-    monthly_df.to_csv(f'raw/batch_{start_year}-{start_month}-01.csv', index=False)
+    monthly_df.to_csv(f'raw/batch_{start_year}-{start_month:02d}-01.csv', index=False)
     start_month += 1
 
     # End of the year change year, reset months to one
@@ -29,26 +29,68 @@ while (start_year < end_year) or (start_year == end_year and start_month <= end_
 
 
 # Validate data from each month
-# Require all required columns, not empty, no duplicate ticket IDs
+# Required not empty, no duplicate ticket IDs
 
 file_list = glob.glob("raw/batch_*.csv")
 
+required_columns = [
+    'ticket_id', 'created_at', 'customer_id', 'customer_segment','product_area', 'issue_type', 'channel', 'priority','status', 'sla_plan',
+    'initial_message', 'agent_first_reply', 'resolution_summary', 'resolution_time_hours', 'reopened', 'customer_sentiment', 'csat_score', 'has_attachment', 'platform', 'region'
+]
+
+os.makedirs("raw/_quarantine", exist_ok=True)
+manifest_rows = []
+
 for file in file_list:
+    filename = os.path.basename(file)
+    record = {
+        "filename": filename,
+        "row_count": None,
+        "missing_columns": "",
+        "duplicate_count": 0,
+        "status": "pass"
+    }
     try:
         df = pd.read_csv(file)
+        record["row_count"] = len(df)
+
+        # Check for required columns
+        missing = [col for col in required_columns if col not in df.columns]
+        if missing:
+            record["missing_columns"] = ", ".join(missing)
+            record["status"] = "fail"
+
+
 
         # Check if file is empty
         if df.empty:
-            print(f'{file} has headers, but no rows')
-            continue
+            record["status"] = "fail" if record["status"] == "passed" else record["status"]
+            if not record["missing_columns"]:
+                record["missing_columns"] = "Empty File"
+
 
         # Check for unique ticket IDs
         if df['ticket_id'].duplicated().any():
             duplicate_count = df['ticket_id'].duplicated().sum()
-            print(f'{file} has {duplicate_count} duplicate ticket IDs')
-            continue
+            if duplicate_count > 0:
+                record["status"] = "fail"
 
-        print(f'{file} passed verification')
+        
 
     except pd.errors.EmptyDataError:
-        print("File is empty")
+        record["status"] = "fail"
+        record["missing_columns"] = "N/A (unreadable / empty file)"
+
+    if record["status"] == "fail":
+        quarantine_path = os.path.join("raw/_quarantine", filename)
+        os.rename(file, quarantine_path)
+        print(f'{filename} FAILED validation — moved to quarantine')
+    else:
+        print(f'{filename} passed verification')
+
+    manifest_rows.append(record)
+
+# Write the manifest — your record of what happened during this ingestion run
+manifest_df = pd.DataFrame(manifest_rows)
+manifest_df.to_csv("raw/_manifest.csv", index=False)
+print(f"\nManifest written to raw/_manifest.csv ({len(manifest_rows)} batches processed)")
